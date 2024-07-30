@@ -1,31 +1,27 @@
 // 文档  https://react-leaflet.js.org/
-import React, { useState, useEffect } from 'react'
-import { divIcon } from 'leaflet'
-import MarkerClusterGroup from 'react-leaflet-cluster'
+import { Map as LeafletMap } from 'leaflet'
+
+import axios from 'axios'
+import { Icon } from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import { useEffect, useRef, useState } from 'react'
 import {
   MapContainer,
-  TileLayer,
-  Polyline,
-  Circle,
-  FeatureGroup,
-  LayerGroup,
-  Popup,
-  Rectangle,
   Marker,
-  useMapEvents
+  Polyline,
+  Popup,
+  TileLayer,
+  useMap
 } from 'react-leaflet'
-import axios from 'axios'
-import 'leaflet/dist/leaflet.css'
+import MarkerClusterGroup from 'react-leaflet-cluster'
 import './App.css'
-const NumberIcon = (number: number) => {
-  return divIcon({
-    className: '',
-    html: `
-    <div style="position: relative;">
-      <img class="number-icon" src="l.png" />
-    `,
-    iconSize: [25, 25],
-    iconAnchor: [12, 12]
+import queryString from 'query-string';
+ 
+const NumberIcon = () => {
+  return new Icon({
+    iconUrl: 'l.png',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40]
   })
 }
 
@@ -34,14 +30,19 @@ function App() {
   const [end, setEnd] = useState('29.56, 106.46')
   const [center, setcenter] = useState([29.56, 106.45])
   const [route, setRoute] = useState<any>([])
+  const mapRef = useRef<LeafletMap>(null)
 
   useEffect(() => {
     // 初始化地图
+    const queryParams = queryString.parse(location.search);
+    console.log(` queryParams==>`,queryParams);
+
   }, [])
 
   const mapConfig = {
     center,
     zoom: 3,
+
     style: { height: '100%', width: '100%' }
     /**是否可缩放 */
     // scrollWheelZoom: false
@@ -80,6 +81,7 @@ function App() {
       })
     setRoute(routes)
     setcenter(routes[0])
+
     return
     axios
       .post(
@@ -98,7 +100,7 @@ function App() {
           headers: { 'Content-Type': 'application/json' }
         }
       )
-      .then(response => {
+      .then(() => {
         const routes = // response.data.path.map((i: string[]) => {
           //   return i.reverse()
           // })
@@ -135,22 +137,13 @@ function App() {
       })
   }
 
-  function LocationMarker() {
-    const [position, setPosition] = useState(null)
-    const map = useMapEvents({
-      click() {
-        map.locate()
-      },
-      locationfound(e) {
-        setPosition(e.latlng)
-        map.flyTo(e.latlng, map.getZoom())
-      }
+
+  function SetViewOnChange({}) {
+    const map = useMap()
+    map.on('click', ({ latlng }) => {
+      map.setView([latlng.lat, latlng.lng])
     })
-    return position === null ? null : (
-      <Marker position={position}>
-        <Popup>You are here</Popup>
-      </Marker>
-    )
+    return null
   }
   return (
     <div className="App">
@@ -166,7 +159,8 @@ function App() {
         <br />
         <button onClick={handleRoute}>测试</button>
       </div>
-      <MapContainer {...mapConfig}>
+      {/* @ts-ignore */}
+      <MapContainer {...mapConfig} ref={mapRef}>
         {/* 地图 瓦片图层 */}
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {route && (
@@ -178,12 +172,11 @@ function App() {
                 <Marker
                   key={index}
                   {...{
-                    icon: NumberIcon(index + 1),
+                    icon: NumberIcon(),
                     position: i
                   }}
                 >
                   <Popup>
-
                     <h2>this is {index + 1}</h2>
                   </Popup>
                 </Marker>
@@ -191,6 +184,7 @@ function App() {
             })}
           </MarkerClusterGroup>
         )}
+        <SetViewOnChange />
         {/* <LocationMarker /> */}
       </MapContainer>
     </div>
